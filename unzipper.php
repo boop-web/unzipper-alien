@@ -112,7 +112,13 @@ if (isset($_GET['download']) && !$show_login) {
 if (isset($_POST['dounzip']) && !$show_login) {
   $archive = isset($_POST['zipfile']) ? strip_tags($_POST['zipfile']) : '';
   $destination = isset($_POST['extpath']) ? strip_tags($_POST['extpath']) : '';  
-  // Handle file upload
+  if (!empty($archive)) {
+    $unzipper->prepareExtraction($archive, $destination);
+  }
+}
+
+// Handle file upload separately
+if (isset($_POST['doupload']) && !$show_login) {
   if (isset($_FILES['uploadfile']) && $_FILES['uploadfile']['error'] == 0) {
     $allowed = array('zip', 'rar', 'gz');
     $filename = $_FILES['uploadfile']['name'];
@@ -121,20 +127,15 @@ if (isset($_POST['dounzip']) && !$show_login) {
     if (in_array($ext, $allowed)) {
       $upload_path = $unzipper->localdir . '/' . basename($filename);
       if (move_uploaded_file($_FILES['uploadfile']['tmp_name'], $upload_path)) {
-        $archive = basename($filename);
-        $GLOBALS['status'] = array('info' => 'File uploaded successfully. Extracting...');
+        $GLOBALS['status'] = array('success' => 'File uploaded successfully: ' . htmlspecialchars($filename));
       } else {
         $GLOBALS['status'] = array('error' => 'Error uploading file.');
-        $archive = '';
       }
     } else {
       $GLOBALS['status'] = array('error' => 'Invalid file type. Only .zip, .rar, .gz allowed.');
-      $archive = '';
     }
-  }
-  
-  if (!empty($archive)) {
-    $unzipper->prepareExtraction($archive, $destination);
+  } else {
+    $GLOBALS['status'] = array('error' => 'No file selected or upload error.');
   }
 }
 
@@ -702,26 +703,52 @@ class Zipper {
             <h3 class="card-title">
               <i class="bi bi-box-arrow-in-down pulse"></i> Extract Archive
             </h3>
-            <form action="" method="POST" enctype="multipart/form-data">
+            
+            <!-- Upload Section -->
+            <div class="mb-4" style="padding: 20px; background: var(--bg-primary); border-radius: 10px; border: 1px solid var(--border-glow);">
+              <h5 class="card-title" style="font-size: 1.1rem; margin-bottom: 15px;">
+                <i class="bi bi-cloud-upload"></i> Quick Upload
+              </h5>
+              <form id="uploadForm" action="" method="POST" enctype="multipart/form-data">
+                <div class="mb-3">
+                  <input type="file" name="uploadfile" id="uploadfile" class="form-control" accept=".zip,.rar,.gz,.tar.gz" onchange="toggleSelectArchive()">
+                  <div class="info-text" style="margin-top: 8px;">
+                    <i class="bi bi-info-circle"></i> Select a file to upload
+                  </div>
+                </div>
+                <button type="button" name="doupload" class="btn btn-alien" id="uploadBtn" onclick="uploadFile()" disabled>
+                  <i class="bi bi-upload"></i> Upload File
+                </button>
+              </form>
+              
+              <!-- Progress Bar -->
+              <div id="progressContainer" style="display: none; margin-top: 15px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                  <span style="color: var(--accent-primary); font-size: 0.9rem;">Uploading...</span>
+                  <span id="progressPercent" style="color: var(--accent-secondary); font-size: 0.9rem;">0%</span>
+                </div>
+                <div style="width: 100%; height: 8px; background: var(--bg-primary); border-radius: 4px; overflow: hidden;">
+                  <div id="progressBar" style="width: 0%; height: 100%; background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary)); transition: width 0.3s;"></div>
+                </div>
+              </div>
+              
+              <div id="uploadMessage" style="margin-top: 10px;"></div>
+            </div>
+            
+            <hr style="border-color: var(--border-glow); margin: 20px 0;">
+            
+            <!-- Extract Section -->
+            <form action="" method="POST">
               <div class="mb-3">
                 <label for="zipfile" class="form-label">
                   <i class="bi bi-file-earmark-zip"></i> Select Archive from Server
                 </label>
-                <select name="zipfile" class="form-select" size="1">
+                <select name="zipfile" id="zipfile" class="form-select" size="1" onchange="toggleUpload()">
+                  <option value="">-- Select an archive --</option>
                   <?php foreach ($unzipper->zipfiles as $zip): ?>
                     <option><?php echo htmlspecialchars($zip); ?></option>
                   <?php endforeach; ?>
                 </select>
-              </div>
-
-              <div class="mb-3">
-                <label for="uploadfile" class="form-label">
-                  <i class="bi bi-cloud-upload"></i> Or Upload New Archive
-                </label>
-                <input type="file" name="uploadfile" class="form-control" accept=".zip,.rar,.gz,.tar.gz">
-                <div class="info-text">
-                  <i class="bi bi-info-circle"></i> Upload .zip, .rar, or .gz files directly
-                </div>
               </div>
 
               <div class="mb-3">
@@ -926,6 +953,88 @@ class Zipper {
 
     initThree();
     animate();
+    
+    // Upload functions
+    function toggleUpload() {
+      const zipSelect = document.getElementById('zipfile');
+      const uploadBtn = document.getElementById('uploadBtn');
+      const fileInput = document.getElementById('uploadfile');
+      
+      if (zipSelect.value !== '') {
+        fileInput.value = '';
+        uploadBtn.disabled = true;
+        fileInput.disabled = true;
+      } else {
+        fileInput.disabled = false;
+      }
+    }
+    
+    function toggleSelectArchive() {
+      const zipSelect = document.getElementById('zipfile');
+      const fileInput = document.getElementById('uploadfile');
+      const uploadBtn = document.getElementById('uploadBtn');
+      
+      if (fileInput.files.length > 0) {
+        zipSelect.value = '';
+        zipSelect.disabled = true;
+        uploadBtn.disabled = false;
+      } else {
+        zipSelect.disabled = false;
+        uploadBtn.disabled = true;
+      }
+    }
+    
+    function uploadFile() {
+      const fileInput = document.getElementById('uploadfile');
+      const progressContainer = document.getElementById('progressContainer');
+      const progressBar = document.getElementById('progressBar');
+      const progressPercent = document.getElementById('progressPercent');
+      const uploadMessage = document.getElementById('uploadMessage');
+      const uploadBtn = document.getElementById('uploadBtn');
+      
+      if (!fileInput.files.length) {
+        uploadMessage.innerHTML = '<div class="alert-alien alert-danger" style="padding: 10px; margin-top: 10px;"><i class="bi bi-exclamation-triangle"></i> Please select a file first</div>';
+        return;
+      }
+      
+      const formData = new FormData();
+      formData.append('uploadfile', fileInput.files[0]);
+      formData.append('doupload', '1');
+      
+      const xhr = new XMLHttpRequest();
+      
+      xhr.upload.addEventListener('progress', function(e) {
+        if (e.lengthComputable) {
+          const percent = Math.round((e.loaded / e.total) * 100);
+          progressBar.style.width = percent + '%';
+          progressPercent.textContent = percent + '%';
+        }
+      });
+      
+      xhr.addEventListener('load', function() {
+        if (xhr.status === 200) {
+          progressBar.style.width = '100%';
+          progressPercent.textContent = '100%';
+          uploadMessage.innerHTML = '<div class="alert-alien alert-success" style="padding: 10px; margin-top: 10px;"><i class="bi bi-check-circle"></i> Upload complete! Reloading...</div>';
+          setTimeout(function() {
+            window.location.reload();
+          }, 1500);
+        } else {
+          uploadMessage.innerHTML = '<div class="alert-alien alert-danger" style="padding: 10px; margin-top: 10px;"><i class="bi bi-exclamation-triangle"></i> Upload failed</div>';
+          uploadBtn.disabled = false;
+        }
+      });
+      
+      xhr.addEventListener('error', function() {
+        uploadMessage.innerHTML = '<div class="alert-alien alert-danger" style="padding: 10px; margin-top: 10px;"><i class="bi bi-exclamation-triangle"></i> Upload error occurred</div>';
+        uploadBtn.disabled = false;
+      });
+      
+      xhr.open('POST', '', true);
+      progressContainer.style.display = 'block';
+      uploadBtn.disabled = true;
+      xhr.send(formData);
+    }
   </script>
 </body>
 </html>

@@ -2,6 +2,17 @@
 
 A modern, web-based archive manager with an otherworldly twist. Extract and create ZIP, RAR, and GZ archives through an advanced alien-themed GUI powered by Bootstrap 5 and Three.js.
 
+## ðŸ’­ Why I Made This
+
+This is a tool that I needed for most of my cases. I was always going to GitHub to find one, or sometimes I couldn't even remember the name because I was too lazy to:
+- Write the code myself
+- Save it properly
+- Keep it bookmarked
+
+So I made this copy for myself, and then thought: *"Why not share it with everybody?"* 
+
+If anybody is in need or searching for a quick unzip solution, here it is. No more hunting through GitHub repos or trying to remember that one tool you used months ago.
+
 ![Version](https://img.shields.io/badge/version-2.0.0-blue)
 ![PHP](https://img.shields.io/badge/PHP-7.0+-purple)
 ![License](https://img.shields.io/badge/license-GPL%20v3-green)

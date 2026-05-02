@@ -1,0 +1,30 @@
+# PHP
+*.log
+*.cache
+*.tmp
+/vendor/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Archives (don't commit extracted files)
+*.zip
+*.rar
+*.gz
+*.tar
+
+# Config
+*.env
+config.php
+
+# Generated
+zipper-*.zip

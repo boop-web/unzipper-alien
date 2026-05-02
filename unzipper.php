@@ -687,12 +687,11 @@ class Zipper {
                 <div class="alert-alien alert-success"><?php echo $encrypt_success; ?></div>
               <?php endif; ?>
               
-              <form action="" method="POST">
-                <div class="mb-3">
-                  <input type="text" name="passcode" class="form-control passcode-input" 
-                         placeholder="000000" maxlength="6" inputmode="numeric"
-                         style="font-size: 2rem; letter-spacing: 15px; text-align: center; font-weight: bold; color: var(--accent-primary); background: var(--bg-primary); border: 2px solid var(--accent-primary); padding: 20px;"
-                         autocomplete="off">
+              <form action="" method="POST" id="decryptForm">
+                <div class="mb-3" style="position: relative; z-index: 1000;">
+                  <input type="text" id="decryptPasscode" name="passcode" 
+                         style="width: 100%; font-size: 2rem; letter-spacing: 15px; text-align: center; font-weight: bold; color: #00ffaa; background: #1a1a2e; border: 3px solid #00ffaa; padding: 25px; border-radius: 10px; outline: none; cursor: text; -webkit-appearance: none; -moz-appearance: none;"
+                         placeholder="000000" maxlength="6" autocomplete="off">
                   <div class="info-text">Enter your 6-digit passcode</div>
                 </div>
                 <button type="submit" name="decrypt_page" class="btn btn-alien" style="width: 100%; padding: 15px;">
@@ -1160,7 +1159,7 @@ class Zipper {
     }
 
     // Passcode validation - only allow numbers
-    const passcodeInputs = document.querySelectorAll('.passcode-input');
+    const passcodeInputs = document.querySelectorAll('.passcode-input, #decryptPasscode, input[name="passcode"]');
     passcodeInputs.forEach(function(input) {
       input.addEventListener('input', function(e) {
         this.value = this.value.replace(/[^0-9]/g, '').slice(0, 6);

@@ -13,16 +13,15 @@ So I made this copy for myself, and then thought: *"Why not share it with everyb
 
 If anybody is in need or searching for a quick unzip solution, here it is. No more hunting through GitHub repos or trying to remember that one tool you used months ago.
 
-![Version](https://img.shields.io/badge/version-2.0.0-blue)
-![PHP](https://img.shields.io/badge/PHP-7.0+-purple)
-![License](https://img.shields.io/badge/license-GPL%20v3-green)
-
 ## âœ¨ Features
 
 - **ðŸŒŒ Alien-Themed UI**: Dark futuristic interface with neon accents and 3D particle effects
 - **ðŸ“¦ Archive Extraction**: Extract `.zip`, `.rar`, and `.gz` files
 - **ðŸ“¤ File Upload**: Upload and extract archives directly in the browser
 - **ðŸ“ Archive Creation**: Create `.zip` archives from directories
+- **ðŸ” Password Protection**: Optional password protection with AES-256 encryption
+- **ðŸ’¾ Backup Function**: One-click backup of entire directory
+- **â¬‡ï¸ Download Manager**: Download any archive file directly from the interface
 - **ðŸŽ¨ Modern Design**: Built with Bootstrap 5, Three.js, and custom CSS
 - **ðŸ“± Responsive**: Works on desktop and mobile devices
 - **âš¡ Real-time Feedback**: Visual status updates with processing time
@@ -34,12 +33,13 @@ If anybody is in need or searching for a quick unzip solution, here it is. No mo
 - PHP 7.0 or higher
 - Web server (Apache, Nginx, or PHP built-in server)
 - PHP extensions: `zip`, `zlib` (for GZ), `rar` (optional, for RAR files)
+- PHP `openssl` extension (for password encryption)
 
 ### Quick Start
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/unzipper-alien.git
+   git clone https://github.com/boop-web/unzipper-alien.git
    cd unzipper-alien
    ```
 
@@ -61,8 +61,8 @@ If anybody is in need or searching for a quick unzip solution, here it is. No mo
 
 ### Extracting Archives
 
-1. Upload your `.zip`, `.rar`, or `.gz` file to the server
-2. Select the archive from the dropdown menu
+1. Upload your `.zip`, `.rar`, or `.gz` file to the server (or use the upload field)
+2. Select the archive from the dropdown menu (if already on server)
 3. (Optional) Specify extraction path
 4. Click "Unzip Archive"
 
@@ -71,6 +71,24 @@ If anybody is in need or searching for a quick unzip solution, here it is. No mo
 1. Enter the path to the directory you want to zip
 2. Click "Zip Archive"
 3. The archive will be created with timestamp (e.g., `zipper-2026-05-02--14-30.zip`)
+
+### Quick Backup
+
+1. Click "Backup Now" to create a complete backup of the current directory
+2. The backup will be saved as `backup-YYYY-MM-DD--HH-II-SS.zip`
+3. Download the backup from the Download Archives section
+
+### Password Protection
+
+1. On first run, set a password to protect the tool
+2. The password is encrypted using AES-256-CBC and stored in `.unzipper_auth`
+3. Next time you access the tool, you'll need to enter the password
+4. Logout/Lock the tool when done
+
+### Downloading Files
+
+- All archive files in the directory are listed in the "Download Archives" section
+- Click any file to download it directly
 
 ## ðŸŽ¨ Customization
 
@@ -103,20 +121,38 @@ Remove or comment out the Three.js script section in the HTML footer.
 - **Zipper**: Handles archive creation
   - `zipDir()` - Creates ZIP from directory
 
-### Security Notes
+### Security Features
 
-- Only extracts files already present on the server
-- Basic input sanitization with `strip_tags()`
-- Consider adding authentication for production use
-- Restrict access via `.htaccess` or server config
+- **Password Protection**: AES-256-CBC encryption for stored passwords
+- **File Upload Validation**: Only allows `.zip`, `.rar`, `.gz` files
+- **Input Sanitization**: Uses `strip_tags()` and `basename()` for security
+- **Session Management**: Password-protected access with session handling
+- **File Access Control**: Only allows downloading archive files
+
+### Password Encryption
+
+- Uses PHP's `openssl_encrypt()` with AES-256-CBC
+- Encryption key derived from SHA-256 hash
+- IV (Initialization Vector) stored with encrypted data
+- Password stored in `.unzipper_auth` file (keep this secure!)
 
 ## ðŸŒŸ Credits
 
 - **Original Author**: Andreas Tasch (at[tec])
 - **Alien UI Enhancement**: Modern redesign with Bootstrap 5 & Three.js
+- **Password & Backup Features**: Added in v2.2.0
 - **License**: GNU GPL v3
 
 ## ðŸ“ Changelog
+
+### Version 2.2.0 - Security & Backup Edition
+- Added password protection with AES-256 encryption
+- Implemented login system with session management
+- Added one-click backup functionality
+- Added download manager for archive files
+- Users can now backup entire directories quickly
+- Password stored with strong encryption in `.unzipper_auth`
+- Enhanced security for multi-user environments
 
 ### Version 2.1.0 - Upload Feature
 - Added file upload capability for direct archive extraction
@@ -144,10 +180,14 @@ Remove or comment out the Three.js script section in the HTML footer.
 
 This tool is intended for legitimate file management purposes. Ensure you have permission to extract/create archives on the server. The author is not responsible for misuse.
 
+**Security Note**: When using password protection, keep the `.unzipper_auth` file secure. This tool is not a replacement for proper server security - use additional measures like `.htaccess` restrictions in production.
+
 ## ðŸ› Issues & Contributions
 
-Report issues or contribute at: [GitHub Issues](https://github.com/yourusername/unzipper-alien/issues)
+Report issues or contribute at: [GitHub Issues](https://github.com/boop-web/unzipper-alien/issues)
 
 ---
 
 **Made with ðŸ’š and alien technology**
+
+*Drop this script in any folder that needs archiving, and you're good to go!*

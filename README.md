@@ -21,6 +21,7 @@ If anybody is in need or searching for a quick unzip solution, here it is. No mo
 
 - **ðŸŒŒ Alien-Themed UI**: Dark futuristic interface with neon accents and 3D particle effects
 - **ðŸ“¦ Archive Extraction**: Extract `.zip`, `.rar`, and `.gz` files
+- **ðŸ“¤ File Upload**: Upload and extract archives directly in the browser
 - **ðŸ“ Archive Creation**: Create `.zip` archives from directories
 - **ðŸŽ¨ Modern Design**: Built with Bootstrap 5, Three.js, and custom CSS
 - **ðŸ“± Responsive**: Works on desktop and mobile devices
@@ -116,6 +117,12 @@ Remove or comment out the Three.js script section in the HTML footer.
 - **License**: GNU GPL v3
 
 ## ðŸ“ Changelog
+
+### Version 2.1.0 - Upload Feature
+- Added file upload capability for direct archive extraction
+- Users can now upload and extract in one step
+- No need to upload via FTP/SFTP separately
+- Updated form to support `multipart/form-data`
 
 ### Version 2.0.0 - Alien Edition
 - Complete UI overhaul with alien/dark theme

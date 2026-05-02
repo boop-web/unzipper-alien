@@ -689,22 +689,16 @@ class Zipper {
               
               <form action="" method="POST">
                 <div class="mb-3">
-                  <input type="password" name="passcode" class="form-control passcode-input" 
-                         placeholder="000000" maxlength="6" pattern="\d{6}" required
-                         style="font-size: 1.8rem; letter-spacing: 12px;">
+                  <input type="text" name="passcode" class="form-control passcode-input" 
+                         placeholder="000000" maxlength="6" inputmode="numeric"
+                         style="font-size: 2rem; letter-spacing: 15px; text-align: center; font-weight: bold; color: var(--accent-primary); background: var(--bg-primary); border: 2px solid var(--accent-primary); padding: 20px;"
+                         autocomplete="off">
                   <div class="info-text">Enter your 6-digit passcode</div>
                 </div>
-                <button type="submit" name="decrypt_page" class="btn btn-alien" style="width: 100%;">
+                <button type="submit" name="decrypt_page" class="btn btn-alien" style="width: 100%; padding: 15px;">
                   <i class="bi bi-unlock"></i> Decrypt & Unlock
                 </button>
               </form>
-              
-              <div class="mt-3">
-                <a href="?destroy_lock=1" class="btn btn-alien" style="background: linear-gradient(135deg, var(--danger), #ff0066); font-size: 0.8rem; padding: 8px 20px;">
-                  <i class="bi bi-trash"></i> Reset Lock
-                </a>
-                <div class="info-text" style="margin-top: 5px;">Warning: This will remove the lock completely!</div>
-              </div>
             </div>
           </div>
         </div>
@@ -925,14 +919,15 @@ class Zipper {
             </h5>
             <form action="" method="POST">
               <div class="mb-3">
-                <input type="password" name="newpasscode" class="form-control passcode-input" 
-                       placeholder="000000" maxlength="6" pattern="\d{6}" required
-                       style="font-size: 1.5rem; letter-spacing: 10px;">
+                <input type="text" name="newpasscode" class="form-control passcode-input" 
+                       placeholder="000000" maxlength="6" inputmode="numeric"
+                       style="font-size: 1.5rem; letter-spacing: 10px; text-align: center; color: var(--accent-primary); background: var(--bg-primary); border: 2px solid var(--border-glow);">
                 <div class="info-text">Enter 6-digit passcode</div>
               </div>
               <div class="mb-3">
-                <input type="password" name="confirmpasscode" class="form-control" 
-                       placeholder="Confirm passcode" maxlength="6" pattern="\d{6}" required>
+                <input type="text" name="confirmpasscode" class="form-control" 
+                       placeholder="Confirm passcode" maxlength="6" inputmode="numeric"
+                       style="text-align: center; color: var(--accent-primary); background: var(--bg-primary); border: 2px solid var(--border-glow);">
                 <div class="info-text">Confirm your passcode</div>
               </div>
               
@@ -1164,13 +1159,13 @@ class Zipper {
       }, 2000);
     }
 
-    // Passcode validation
-    const passcodeInput = document.querySelector('.passcode-input');
-    if (passcodeInput) {
-      passcodeInput.addEventListener('input', function(e) {
+    // Passcode validation - only allow numbers
+    const passcodeInputs = document.querySelectorAll('.passcode-input');
+    passcodeInputs.forEach(function(input) {
+      input.addEventListener('input', function(e) {
         this.value = this.value.replace(/[^0-9]/g, '').slice(0, 6);
       });
-    }
+    });
   </script>
 </body>
 </html>

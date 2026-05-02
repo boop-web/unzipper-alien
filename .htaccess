@@ -1,0 +1,13 @@
+# Security: Deny access to sensitive files
+<FilesMatch "\.(env|log|cache|tmp)$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# Prevent directory listing
+Options -Indexes
+
+# PHP settings
+php_value upload_max_filesize 100M
+php_value post_max_size 100M
+php_value max_execution_time 300

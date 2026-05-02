@@ -610,6 +610,11 @@ class Zipper {
       50% { opacity: 0.6; }
     }
 
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
     ::-webkit-scrollbar {
       width: 10px;
     }
@@ -791,16 +796,37 @@ class Zipper {
             
             <hr style="border-color: var(--border-glow); margin: 20px 0;">
             
-            <form action="" method="POST">
+            <form action="" method="POST" id="backupForm">
               <h5 class="card-title" style="font-size: 1.1rem;">
                 <i class="bi bi-hdd-network"></i> Quick Backup
               </h5>
-              <p class="info-text" style="margin-bottom: 15px;">
-                Create a backup of the entire current directory
+              <p class="info-text" style="margin-bottom: 10px;">
+                Creates a complete backup of the current directory
               </p>
-              <button type="submit" name="dobackup" class="btn btn-alien">
+              <div style="background: var(--bg-primary); padding: 12px; border-radius: 8px; margin-bottom: 15px; border: 1px solid var(--border-glow);">
+                <i class="bi bi-info-circle" style="color: var(--accent-tertiary);"></i>
+                <span style="color: var(--text-secondary); font-size: 0.85rem;">
+                  Backup will be saved as:<br>
+                  <code style="color: var(--accent-primary); background: transparent;">backup_folder_zip_YYYY-MM-DD_HH-II-SS.zip</code>
+                </span>
+              </div>
+              <button type="button" name="dobackup" class="btn btn-alien" id="backupBtn" onclick="startBackup()">
                 <i class="bi bi-cloud-download"></i> Backup Now
               </button>
+              
+              <!-- Backup Progress -->
+              <div id="backupProgress" style="display: none; margin-top: 15px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                  <span style="color: var(--accent-primary); font-size: 0.9rem;">
+                    <i class="bi bi-gear_spin" style="animation: spin 1s linear infinite;"></i> Creating backup...
+                  </span>
+                  <span id="backupPercent" style="color: var(--accent-secondary); font-size: 0.9rem;">0%</span>
+                </div>
+                <div style="width: 100%; height: 8px; background: var(--bg-primary); border-radius: 4px; overflow: hidden;">
+                  <div id="backupProgressBar" style="width: 0%; height: 100%; background: linear-gradient(90deg, var(--accent-tertiary), var(--accent-primary)); transition: width 0.3s;"></div>
+                </div>
+                <div id="backupMessage" style="margin-top: 10px; font-size: 0.85rem;"></div>
+              </div>
             </form>
           </div>
         </div>
@@ -1033,6 +1059,54 @@ class Zipper {
       xhr.open('POST', '', true);
       progressContainer.style.display = 'block';
       uploadBtn.disabled = true;
+      xhr.send(formData);
+    }
+    
+    // Backup function with progress
+    function startBackup() {
+      const backupBtn = document.getElementById('backupBtn');
+      const progressDiv = document.getElementById('backupProgress');
+      const progressBar = document.getElementById('backupProgressBar');
+      const progressPercent = document.getElementById('backupPercent');
+      const messageDiv = document.getElementById('backupMessage');
+      
+      progressDiv.style.display = 'block';
+      backupBtn.disabled = true;
+      
+      // Simulate progress (since we can't track PHP zip creation progress)
+      let progress = 0;
+      const interval = setInterval(function() {
+        progress += Math.random() * 15;
+        if (progress > 90) progress = 90;
+        progressBar.style.width = progress + '%';
+        progressPercent.textContent = Math.round(progress) + '%';
+      }, 200);
+      
+      const formData = new FormData();
+      formData.append('dobackup', '1');
+      
+      const xhr = new XMLHttpRequest();
+      
+      xhr.addEventListener('load', function() {
+        clearInterval(interval);
+        progressBar.style.width = '100%';
+        progressPercent.textContent = '100%';
+        messageDiv.innerHTML = '<div style="color: var(--success);"><i class="bi bi-check-circle"></i> Backup created! Reloading...</div>';
+        
+        setTimeout(function() {
+          window.location.reload();
+        }, 1500);
+      });
+      
+      xhr.addEventListener('error', function() {
+        clearInterval(interval);
+        progressBar.style.width = '0%';
+        progressPercent.textContent = '0%';
+        messageDiv.innerHTML = '<div style="color: var(--danger);"><i class="bi bi-exclamation-triangle"></i> Backup failed</div>';
+        backupBtn.disabled = false;
+      });
+      
+      xhr.open('POST', '', true);
       xhr.send(formData);
     }
   </script>

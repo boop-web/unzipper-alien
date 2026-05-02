@@ -193,6 +193,34 @@ if (isset($_GET['download']) && !$show_login && !$page_locked) {
     }
 }
 
+// List zip contents
+if (isset($_GET['listzip']) && !$show_login && !$page_locked) {
+    $file = basename($_GET['listzip']);
+    $filepath = $unzipper->localdir . '/' . $file;
+    if (file_exists($filepath) && pathinfo($file, PATHINFO_EXTENSION) === 'zip') {
+        $zip = new ZipArchive;
+        if ($zip->open($filepath) === TRUE) {
+            $contents = array();
+            for ($i = 0; $i < $zip->numFiles; $i++) {
+                $name = $zip->getNameIndex($i);
+                $stat = $zip->statIndex($i);
+                $contents[] = array(
+                    'name' => $name,
+                    'size' => $stat['size'],
+                    'isDir' => substr($name, -1) === '/'
+                );
+            }
+            $zip->close();
+            header('Content-Type: application/json');
+            echo json_encode($contents);
+            exit;
+        }
+    }
+    header('Content-Type: application/json');
+    echo json_encode(array('error' => 'Cannot open zip file'));
+    exit;
+}
+
 if (isset($_POST['dounzip']) && !$show_login && !$page_locked) {
     $archive = isset($_POST['zipfile']) ? strip_tags($_POST['zipfile']) : '';
     $destination = isset($_POST['extpath']) ? strip_tags($_POST['extpath']) : '';
@@ -804,12 +832,24 @@ class Zipper {
             <form action="" method="POST">
               <div class="mb-3">
                 <label class="form-label"><i class="bi bi-file-earmark-zip"></i> Select Archive from Server</label>
-                <select name="zipfile" id="zipfile" class="form-select" size="1" onchange="toggleUpload()">
+                <select name="zipfile" id="zipfile" class="form-select" size="1" onchange="loadZipContents()">
                   <option value="">-- Select an archive --</option>
                   <?php foreach ($unzipper->zipfiles as $zip): ?>
-                    <option><?php echo htmlspecialchars($zip); ?></option>
+                    <option value="<?php echo htmlspecialchars($zip); ?>"><?php echo htmlspecialchars($zip); ?></option>
                   <?php endforeach; ?>
                 </select>
+              </div>
+
+              <!-- Zip Contents Display -->
+              <div id="zipContents" style="display: none; margin-bottom: 15px;">
+                <div style="background: var(--bg-primary); border: 1px solid var(--border-glow); border-radius: 8px; padding: 15px;">
+                  <h6 style="color: var(--accent-primary); margin-bottom: 10px;">
+                    <i class="bi bi-folder2"></i> Contents:
+                  </h6>
+                  <div id="zipContentsList" style="max-height: 200px; overflow-y: auto; font-size: 0.85rem;">
+                    <!-- Contents loaded here -->
+                  </div>
+                </div>
               </div>
 
               <div class="mb-3">
@@ -1039,6 +1079,93 @@ class Zipper {
         fileInput.disabled = false;
         fileInput.style.opacity = '1';
       }
+    }
+
+    // Load zip contents when a zip file is selected
+    function loadZipContents() {
+      const zipSelect = document.getElementById('zipfile');
+      const zipContentsDiv = document.getElementById('zipContents');
+      const zipContentsList = document.getElementById('zipContentsList');
+      
+      if (!zipSelect.value) {
+        zipContentsDiv.style.display = 'none';
+        return;
+      }
+      
+      // Check if it's a zip file
+      if (!zipSelect.value.toLowerCase().endsWith('.zip')) {
+        zipContentsDiv.style.display = 'none';
+        return;
+      }
+      
+      zipContentsList.innerHTML = '<div style="color: var(--text-secondary);">Loading...</div>';
+      zipContentsDiv.style.display = 'block';
+      
+      // Fetch zip contents
+      fetch('?listzip=' + encodeURIComponent(zipSelect.value))
+        .then(response => response.json())
+        .then(data => {
+          if (data.error) {
+            zipContentsList.innerHTML = '<div style="color: var(--danger);">' + data.error + '</div>';
+            return;
+          }
+          
+          if (data.length === 0) {
+            zipContentsList.innerHTML = '<div style="color: var(--text-secondary);">Empty archive</div>';
+            return;
+          }
+          
+          // Group by folders
+          let folders = [];
+          let files = [];
+          
+          data.forEach(item => {
+            if (item.isDir) {
+              folders.push(item.name);
+            } else {
+              files.push(item.name);
+            }
+          });
+          
+          let html = '';
+          
+          // Show folders
+          if (folders.length > 0) {
+            html += '<div style="margin-bottom: 10px;"><strong style="color: var(--accent-tertiary);">Folders:</strong></div>';
+            folders.slice(0, 20).forEach(folder => {
+              const folderName = folder.replace(/\/$/, '').split('/').pop();
+              html += '<div style="color: var(--accent-tertiary); padding: 2px 0;"><i class="bi bi-folder"></i> ' + escapeHtml(folderName) + '</div>';
+            });
+            if (folders.length > 20) {
+              html += '<div style="color: var(--text-secondary);">... and ' + (folders.length - 20) + ' more folders</div>';
+            }
+          }
+          
+          // Show files
+          if (files.length > 0) {
+            if (folders.length > 0) html += '<div style="margin-top: 10px; margin-bottom: 5px;"><strong style="color: var(--accent-primary);">Files:</strong></div>';
+            files.slice(0, 30).forEach(file => {
+              const fileName = file.split('/').pop();
+              html += '<div style="color: var(--text-primary); padding: 2px 0;"><i class="bi bi-file-earmark"></i> ' + escapeHtml(fileName) + '</div>';
+            });
+            if (files.length > 30) {
+              html += '<div style="color: var(--text-secondary);">... and ' + (files.length - 30) + ' more files</div>';
+            }
+          }
+          
+          html += '<div style="margin-top: 10px; color: var(--text-secondary); font-size: 0.75rem;">Total: ' + data.length + ' items</div>';
+          
+          zipContentsList.innerHTML = html;
+        })
+        .catch(err => {
+          zipContentsList.innerHTML = '<div style="color: var(--danger);">Error loading contents</div>';
+        });
+    }
+    
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
     }
 
     function toggleSelectArchive() {

@@ -8,18 +8,110 @@
  * @author  Andreas Tasch, at[tec], attec.at
  * @license GNU GPL v3
  * @package attec.toolbox
- * @version 2.1.0 - Modern Alien Edition
+ * @version 2.2.0 - Modern Alien Edition
  */
-define('VERSION', '2.1.0');
+define('VERSION', '2.2.0');
+
+// Password protection system
+define('PASSWORD_FILE', __DIR__ . '/.unzipper_auth');
+define('ENCRYPTION_METHOD', 'aes-256-cbc');
+define('ENCRYPTION_KEY', hash('sha256', 'unzipper-alien-2026'));
+
+function encrypt_password($password) {
+    $iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length(ENCRYPTION_METHOD));
+    $encrypted = openssl_encrypt($password, ENCRYPTION_METHOD, ENCRYPTION_KEY, 0, $iv);
+    return base64_encode($iv . $encrypted);
+}
+
+function decrypt_password($encrypted) {
+    $data = base64_decode($encrypted);
+    $iv_length = openssl_cipher_iv_length(ENCRYPTION_METHOD);
+    $iv = substr($data, 0, $iv_length);
+    $encrypted_password = substr($data, $iv_length);
+    return openssl_decrypt($encrypted_password, ENCRYPTION_METHOD, ENCRYPTION_KEY, 0, $iv);
+}
+
+function is_password_set() {
+    return file_exists(PASSWORD_FILE);
+}
+
+function verify_password($password) {
+    if (!is_password_set()) return true;
+    $stored = file_get_contents(PASSWORD_FILE);
+    $decrypted = decrypt_password($stored);
+    return $password === $decrypted;
+}
+
+function set_password($password) {
+    $encrypted = encrypt_password($password);
+    return file_put_contents(PASSWORD_FILE, $encrypted) !== false;
+}
+
+// Handle password setup/login
+$login_error = '';
+$show_login = false;
+
+if (is_password_set() && !isset($_SESSION['unzipper_auth'])) {
+    if (isset($_POST['login'])) {
+        $password = $_POST['password'] ?? '';
+        if (verify_password($password)) {
+            session_start();
+            $_SESSION['unzipper_auth'] = true;
+            header('Location: ' . $_SERVER['PHP_SELF']);
+            exit;
+        } else {
+            $login_error = 'Invalid password';
+        }
+    }
+    $show_login = true;
+}
+
+if (isset($_POST['setpassword'])) {
+    $password = $_POST['newpassword'] ?? '';
+    $confirm = $_POST['confirmpassword'] ?? '';
+    if (strlen($password) < 4) {
+        $login_error = 'Password must be at least 4 characters';
+    } elseif ($password !== $confirm) {
+        $login_error = 'Passwords do not match';
+    } else {
+        if (set_password($password)) {
+            session_start();
+            $_SESSION['unzipper_auth'] = true;
+            header('Location: ' . $_SERVER['PHP_SELF']);
+            exit;
+        }
+    }
+}
+
+if (isset($_GET['logout'])) {
+    session_start();
+    unset($_SESSION['unzipper_auth']);
+    session_destroy();
+    header('Location: ' . $_SERVER['PHP_SELF']);
+    exit;
+}
 
 $timestart = microtime(TRUE);
 $GLOBALS['status'] = array();
 
 $unzipper = new Unzipper;
-if (isset($_POST['dounzip'])) {
+
+// Handle file download
+if (isset($_GET['download']) && !$show_login) {
+    $file = basename($_GET['download']);
+    $filepath = $unzipper->localdir . '/' . $file;
+    if (file_exists($filepath) && in_array(pathinfo($file, PATHINFO_EXTENSION), array('zip', 'rar', 'gz'))) {
+        header('Content-Type: application/octet-stream');
+        header('Content-Disposition: attachment; filename="' . $file . '"');
+        header('Content-Length: ' . filesize($filepath));
+        readfile($filepath);
+        exit;
+    }
+}
+
+if (isset($_POST['dounzip']) && !$show_login) {
   $archive = isset($_POST['zipfile']) ? strip_tags($_POST['zipfile']) : '';
-  $destination = isset($_POST['extpath']) ? strip_tags($_POST['extpath']) : '';
-  
+  $destination = isset($_POST['extpath']) ? strip_tags($_POST['extpath']) : '';  
   // Handle file upload
   if (isset($_FILES['uploadfile']) && $_FILES['uploadfile']['error'] == 0) {
     $allowed = array('zip', 'rar', 'gz');
@@ -46,10 +138,17 @@ if (isset($_POST['dounzip'])) {
   }
 }
 
-if (isset($_POST['dozip'])) {
+if (isset($_POST['dozip']) && !$show_login) {
   $zippath = !empty($_POST['zippath']) ? strip_tags($_POST['zippath']) : '.';
   $zipfile = 'zipper-' . date("Y-m-d--H-i") . '.zip';
   Zipper::zipDir($zippath, $zipfile);
+}
+
+// Handle backup - zip entire current directory
+if (isset($_POST['dobackup']) && !$show_login) {
+  $backup_name = 'backup-' . date("Y-m-d--H-i-s") . '.zip';
+  Zipper::zipDir('.', $backup_name);
+  $GLOBALS['status'] = array('success' => 'Backup created: ' . $backup_name);
 }
 
 $timeend = microtime(TRUE);
@@ -532,8 +631,58 @@ class Zipper {
     <div class="container">
       <div class="alien-header">
         <h1><i class="bi bi-box-seam"></i> UNZIPPER</h1>
-        <div class="subtitle">Alien Archive Manager v2.0</div>
+        <div class="subtitle">Alien Archive Manager v2.2</div>
       </div>
+
+      <?php if ($show_login): ?>
+        <div class="row justify-content-center">
+          <div class="col-lg-5">
+            <div class="alien-card">
+              <h3 class="card-title">
+                <i class="bi bi-shield-lock pulse"></i> 
+                <?php echo is_password_set() ? 'Login Required' : 'Set Password Protection'; ?>
+              </h3>
+              <?php if ($login_error): ?>
+                <div class="alert-alien alert alert-danger">
+                  <i class="bi bi-exclamation-triangle"></i> <?php echo $login_error; ?>
+                </div>
+              <?php endif; ?>
+              
+              <?php if (!is_password_set()): ?>
+                <form action="" method="POST">
+                  <div class="mb-3">
+                    <label for="newpassword" class="form-label">
+                      <i class="bi bi-key"></i> New Password
+                    </label>
+                    <input type="password" name="newpassword" class="form-control" placeholder="Enter password (min 4 chars)" required>
+                  </div>
+                  <div class="mb-3">
+                    <label for="confirmpassword" class="form-label">
+                      <i class="bi bi-key-fill"></i> Confirm Password
+                    </label>
+                    <input type="password" name="confirmpassword" class="form-control" placeholder="Confirm password" required>
+                  </div>
+                  <button type="submit" name="setpassword" class="btn btn-alien">
+                    <i class="bi bi-shield-check"></i> Set Password
+                  </button>
+                </form>
+              <?php else: ?>
+                <form action="" method="POST">
+                  <div class="mb-3">
+                    <label for="password" class="form-label">
+                      <i class="bi bi-lock"></i> Password
+                    </label>
+                    <input type="password" name="password" class="form-control" placeholder="Enter password" required>
+                  </div>
+                  <button type="submit" name="login" class="btn btn-alien">
+                    <i class="bi bi-box-arrow-in-right"></i> Login
+                  </button>
+                </form>
+              <?php endif; ?>
+            </div>
+          </div>
+        </div>
+      <?php else: ?>
 
       <?php if (!empty($GLOBALS['status'])): ?>
         <?php $status_type = strtolower(key($GLOBALS['status'])); ?>
@@ -595,7 +744,7 @@ class Zipper {
         <div class="col-lg-6">
           <div class="alien-card">
             <h3 class="card-title">
-              <i class="bi bi-box-arrow-up pulse"></i> Create Archive
+              <i class="bi bi-box-arrow-up pulse"></i> Create / Backup
             </h3>
             <form action="" method="POST">
               <div class="mb-3">
@@ -612,9 +761,54 @@ class Zipper {
                 <i class="bi bi-archive"></i> Zip Archive
               </button>
             </form>
+            
+            <hr style="border-color: var(--border-glow); margin: 20px 0;">
+            
+            <form action="" method="POST">
+              <h5 class="card-title" style="font-size: 1.1rem;">
+                <i class="bi bi-hdd-network"></i> Quick Backup
+              </h5>
+              <p class="info-text" style="margin-bottom: 15px;">
+                Create a backup of the entire current directory
+              </p>
+              <button type="submit" name="dobackup" class="btn btn-alien">
+                <i class="bi bi-cloud-download"></i> Backup Now
+              </button>
+            </form>
           </div>
         </div>
       </div>
+
+      <?php if (!empty($unzipper->zipfiles)): ?>
+      <div class="row mt-4">
+        <div class="col-12">
+          <div class="alien-card">
+            <h3 class="card-title">
+              <i class="bi bi-download pulse"></i> Download Archives
+            </h3>
+            <div class="list-group" style="background: transparent;">
+              <?php foreach ($unzipper->zipfiles as $zip): ?>
+                <a href="?download=<?php echo urlencode($zip); ?>" class="list-group-item list-group-item-action" 
+                   style="background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-glow); margin-bottom: 5px; border-radius: 8px;">
+                  <i class="bi bi-file-earmark-zip"></i> <?php echo htmlspecialchars($zip); ?>
+                  <span class="badge bg-success" style="float: right;">Download</span>
+                </a>
+              <?php endforeach; ?>
+            </div>
+          </div>
+        </div>
+      </div>
+      <?php endif; ?>
+
+      <div class="row mt-3">
+        <div class="col-12 text-center">
+          <a href="?logout=1" class="btn btn-alien" style="background: linear-gradient(135deg, var(--danger), #ff0066);">
+            <i class="bi bi-box-arrow-right"></i> Logout / Lock
+          </a>
+        </div>
+      </div>
+
+      <?php endif; ?>
     </div>
   </div>
 

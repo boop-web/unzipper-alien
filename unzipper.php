@@ -8,9 +8,9 @@
  * @author  Andreas Tasch, at[tec], attec.at
  * @license GNU GPL v3
  * @package attec.toolbox
- * @version 2.0.0 - Modern Alien Edition
+ * @version 2.1.0 - Modern Alien Edition
  */
-define('VERSION', '2.0.0');
+define('VERSION', '2.1.0');
 
 $timestart = microtime(TRUE);
 $GLOBALS['status'] = array();
@@ -19,7 +19,31 @@ $unzipper = new Unzipper;
 if (isset($_POST['dounzip'])) {
   $archive = isset($_POST['zipfile']) ? strip_tags($_POST['zipfile']) : '';
   $destination = isset($_POST['extpath']) ? strip_tags($_POST['extpath']) : '';
-  $unzipper->prepareExtraction($archive, $destination);
+  
+  // Handle file upload
+  if (isset($_FILES['uploadfile']) && $_FILES['uploadfile']['error'] == 0) {
+    $allowed = array('zip', 'rar', 'gz');
+    $filename = $_FILES['uploadfile']['name'];
+    $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+    
+    if (in_array($ext, $allowed)) {
+      $upload_path = $unzipper->localdir . '/' . basename($filename);
+      if (move_uploaded_file($_FILES['uploadfile']['tmp_name'], $upload_path)) {
+        $archive = basename($filename);
+        $GLOBALS['status'] = array('info' => 'File uploaded successfully. Extracting...');
+      } else {
+        $GLOBALS['status'] = array('error' => 'Error uploading file.');
+        $archive = '';
+      }
+    } else {
+      $GLOBALS['status'] = array('error' => 'Invalid file type. Only .zip, .rar, .gz allowed.');
+      $archive = '';
+    }
+  }
+  
+  if (!empty($archive)) {
+    $unzipper->prepareExtraction($archive, $destination);
+  }
 }
 
 if (isset($_POST['dozip'])) {
@@ -529,16 +553,26 @@ class Zipper {
             <h3 class="card-title">
               <i class="bi bi-box-arrow-in-down pulse"></i> Extract Archive
             </h3>
-            <form action="" method="POST">
+            <form action="" method="POST" enctype="multipart/form-data">
               <div class="mb-3">
                 <label for="zipfile" class="form-label">
-                  <i class="bi bi-file-earmark-zip"></i> Select Archive
+                  <i class="bi bi-file-earmark-zip"></i> Select Archive from Server
                 </label>
                 <select name="zipfile" class="form-select" size="1">
                   <?php foreach ($unzipper->zipfiles as $zip): ?>
                     <option><?php echo htmlspecialchars($zip); ?></option>
                   <?php endforeach; ?>
                 </select>
+              </div>
+
+              <div class="mb-3">
+                <label for="uploadfile" class="form-label">
+                  <i class="bi bi-cloud-upload"></i> Or Upload New Archive
+                </label>
+                <input type="file" name="uploadfile" class="form-control" accept=".zip,.rar,.gz,.tar.gz">
+                <div class="info-text">
+                  <i class="bi bi-info-circle"></i> Upload .zip, .rar, or .gz files directly
+                </div>
               </div>
 
               <div class="mb-3">
